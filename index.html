@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>직원 연락처 검색</title>
+<style>
+  :root {
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --text: #1d2433;
+    --muted: #6b7486;
+    --accent: #2457d6;
+    --accent-soft: #e8eefc;
+    --border: #e1e5ee;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  main { max-width: 960px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 24px; }
+  .sub { margin: 0 0 24px; color: var(--muted); font-size: 14px; }
+  .search { display: flex; gap: 8px; margin-bottom: 12px; }
+  .search input {
+    flex: 1; padding: 12px 14px; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+  }
+  .search input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    padding: 6px 12px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card); color: var(--text); font-family: inherit;
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .count { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .head { display: flex; align-items: center; gap: 12px; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex: none;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-weight: 700; font-size: 18px;
+  }
+  .name { font-size: 17px; font-weight: 700; }
+  .role { font-size: 13px; color: var(--muted); }
+  .dept {
+    align-self: flex-start; font-size: 12px; padding: 3px 8px;
+    border-radius: 6px; background: var(--accent-soft); color: var(--accent);
+  }
+  .info { margin: 0; padding: 0; list-style: none; font-size: 14px; display: grid; gap: 6px; }
+  .info a { color: inherit; text-decoration: none; }
+  .info a:hover { color: var(--accent); text-decoration: underline; }
+  .info span { color: var(--muted); display: inline-block; width: 44px; }
+  mark { background: #fff3a8; color: inherit; border-radius: 2px; }
+  .empty { grid-column: 1 / -1; text-align: center; padding: 48px 0; color: var(--muted); }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171f; --card: #1d222d; --text: #e8ebf2; --muted: #98a1b3;
+      --accent: #7aa2ff; --accent-soft: #263253; --border: #2c3342;
+    }
+    .chip.active { color: #14171f; }
+    mark { background: #6b5d12; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>직원 연락처 검색</h1>
+  <p class="sub">직원명 또는 부서명으로 검색하세요.</p>
+
+  <div class="search">
+    <input id="q" type="search" placeholder="예: 김민준, 인사팀" autocomplete="off" autofocus>
+  </div>
+  <div class="chips" id="chips"></div>
+  <p class="count" id="count"></p>
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+  // 샘플 데이터 — 실제 직원 정보로 교체하세요.
+  const employees = [
+    { name: "김민준", dept: "경영지원팀", title: "팀장",   phone: "02-1234-5001", email: "minjun.kim@example.com" },
+    { name: "이서연", dept: "경영지원팀", title: "대리",   phone: "02-1234-5002", email: "seoyeon.lee@example.com" },
+    { name: "박지호", dept: "인사팀",     title: "부장",   phone: "02-1234-5101", email: "jiho.park@example.com" },
+    { name: "최유나", dept: "인사팀",     title: "사원",   phone: "02-1234-5102", email: "yuna.choi@example.com" },
+    { name: "정도윤", dept: "개발팀",     title: "수석",   phone: "02-1234-5201", email: "doyun.jung@example.com" },
+    { name: "강하은", dept: "개발팀",     title: "선임",   phone: "02-1234-5202", email: "haeun.kang@example.com" },
+    { name: "윤시우", dept: "개발팀",     title: "사원",   phone: "02-1234-5203", email: "siwoo.yoon@example.com" },
+    { name: "임수아", dept: "영업팀",     title: "팀장",   phone: "02-1234-5301", email: "sua.lim@example.com" },
+    { name: "한지민", dept: "영업팀",     title: "과장",   phone: "02-1234-5302", email: "jimin.han@example.com" },
+    { name: "오현우", dept: "마케팅팀",   title: "과장",   phone: "02-1234-5401", email: "hyunwoo.oh@example.com" },
+    { name: "서예린", dept: "마케팅팀",   title: "대리",   phone: "02-1234-5402", email: "yerin.seo@example.com" },
+    { name: "신재원", dept: "재무팀",     title: "부장",   phone: "02-1234-5501", email: "jaewon.shin@example.com" },
+  ];
+
+  const $q = document.getElementById("q");
+  const $chips = document.getElementById("chips");
+  const $grid = document.getElementById("grid");
+  const $count = document.getElementById("count");
+  const depts = [...new Set(employees.map(e => e.dept))];
+  let activeDept = "";
+
+  const esc = s => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  function highlight(text, q) {
+    const safe = esc(text);
+    if (!q) return safe;
+    return safe.replace(new RegExp(escRe(esc(q)), "gi"), m => `<mark>${m}</mark>`);
+  }
+
+  function renderChips() {
+    $chips.innerHTML = ["", ...depts].map(d =>
+      `<button class="chip${d === activeDept ? " active" : ""}" data-dept="${esc(d)}">${d ? esc(d) : "전체"}</button>`
+    ).join("");
+  }
+
+  function render() {
+    const q = $q.value.trim();
+    const ql = q.toLowerCase();
+    const list = employees.filter(e =>
+      (!activeDept || e.dept === activeDept) &&
+      (!ql || e.name.toLowerCase().includes(ql) || e.dept.toLowerCase().includes(ql))
+    );
+    $count.textContent = `검색 결과 ${list.length}명`;
+    $grid.innerHTML = list.length ? list.map(e => `
+      <article class="card">
+        <div class="head">
+          <div class="avatar">${esc(e.name[0])}</div>
+          <div>
+            <div class="name">${highlight(e.name, q)}</div>
+            <div class="role">${esc(e.title)}</div>
+          </div>
+        </div>
+        <span class="dept">${highlight(e.dept, q)}</span>
+        <ul class="info">
+          <li><span>전화</span><a href="tel:${esc(e.phone)}">${esc(e.phone)}</a></li>
+          <li><span>이메일</span><a href="mailto:${esc(e.email)}">${esc(e.email)}</a></li>
+        </ul>
+      </article>`).join("")
+      : `<div class="empty">검색 결과가 없습니다.</div>`;
+  }
+
+  $q.addEventListener("input", render);
+  $chips.addEventListener("click", ev => {
+    const btn = ev.target.closest(".chip");
+    if (!btn) return;
+    activeDept = btn.dataset.dept;
+    renderChips();
+    render();
+  });
+
+  renderChips();
+  render();
+</script>
+</body>
+</html>
